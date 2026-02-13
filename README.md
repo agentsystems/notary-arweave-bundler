@@ -187,8 +187,8 @@ ECR_URI=$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/notary-arweave-bundler
 # Create ECR repository (first time only)
 aws ecr create-repository --repository-name notary-arweave-bundler --profile notary-arweave-bundler-deployer
 
-# Pull from GHCR
-docker pull ghcr.io/agentsystems/notary-arweave-bundler:latest
+# Pull from GHCR (amd64 — required for Lambda's default architecture)
+docker pull --platform linux/amd64 ghcr.io/agentsystems/notary-arweave-bundler:latest
 
 # Tag and push to ECR
 aws ecr get-login-password --profile notary-arweave-bundler-deployer | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$REGION.amazonaws.com
