@@ -10,7 +10,7 @@ ARG GIT_COMMIT=unknown
 # -----------------------------------------------------------------------------
 # Builder stage – install deps, build app, and collect ALL licenses
 # -----------------------------------------------------------------------------
-FROM public.ecr.aws/lambda/nodejs:20 AS builder
+FROM node:20 AS builder
 
 WORKDIR /build
 
@@ -52,8 +52,8 @@ RUN find node_modules -name "NOTICE*" -type f 2>/dev/null | \
       cp "$file" "/build/licenses/nodejs/${pkg_name}-NOTICE" 2>/dev/null || true; \
     done
 
-# 5) Capture Amazon Linux system packages
-RUN rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH} %{LICENSE}\n' | sort > /build/licenses/system/INSTALLED_PACKAGES.txt
+# 5) Capture system packages (builder uses Debian; runtime is Amazon Linux)
+RUN dpkg-query -W -f='${Package} ${Version} ${License}\n' 2>/dev/null | sort > /build/licenses/system/BUILDER_PACKAGES.txt || true
 
 # 6) Create build environment attribution
 RUN echo "# Build Environment Attribution" > /build/licenses/BUILD_ENVIRONMENT.md && \
@@ -81,7 +81,8 @@ RUN find /build/licenses -name "*.json" -o -name "*.txt" -o -name "*.md" | \
 RUN npm uninstall -g license-checker-rseidelsohn
 
 # Prune to production-only dependencies for the final image
-RUN npm ci --omit=dev
+# --omit=optional excludes GPL-3.0 arweave-stream-tx (unused file-streaming module)
+RUN npm ci --omit=dev --omit=optional
 
 # -----------------------------------------------------------------------------
 # Final stage – minimal Lambda runtime with complete license attribution
