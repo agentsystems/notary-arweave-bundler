@@ -298,19 +298,7 @@ jobs:
           See [README](https://github.com/${{ github.repository }}/blob/main/README.md) for full deployment instructions.
 
           \`\`\`bash
-          # Tag and push to your ECR
-          REGION=\$(aws configure get region)
-          ACCOUNT=\$(aws sts get-caller-identity --query Account --output text)
-          ECR_URI=\$ACCOUNT.dkr.ecr.\$REGION.amazonaws.com/notary-arweave-bundler
-
-          docker tag ${IMAGE}:${VERSION#v} \$ECR_URI:latest
-          docker push \$ECR_URI:latest
-
-          # Deploy with SAM
-          sam deploy --template-file template.yaml \\
-            --stack-name notary-arweave-bundler \\
-            --parameter-overrides KmsKeyArn=\$KMS_KEY_ARN ImageUri=\$ECR_URI:latest \\
-            --capabilities CAPABILITY_IAM --resolve-s3
+          docker pull ${IMAGE}:${VERSION#v}
           \`\`\`
 
           ### Container Registry

@@ -9,16 +9,18 @@ Parameters:
   ImageUri:
     Type: String
     Description: ECR image URI for the Lambda container
-  ApiKey:
+  ApiKeySecretArn:
     Type: String
-    Description: Optional API key to protect the endpoint (leave empty for open access)
+    Description: Optional ARN of a Secrets Manager secret containing the API key (leave empty for open access)
     Default: ""
-    NoEcho: true
   DryRun:
     Type: String
     Description: Set to "true" to skip Arweave submission (test the full pipeline without spending AR)
     Default: "false"
     AllowedValues: ["true", "false"]
+
+Conditions:
+  HasApiKeySecret: !Not [!Equals [!Ref ApiKeySecretArn, ""]]
 
 Globals:
   Function:
@@ -45,10 +47,17 @@ Resources:
       Environment:
         Variables:
           SQS_QUEUE_URL: !Ref BundleQueue
-          API_KEY: !Ref ApiKey
+          API_KEY_SECRET_ARN: !Ref ApiKeySecretArn
       Policies:
         - SQSSendMessagePolicy:
             QueueName: !GetAtt BundleQueue.QueueName
+        - !If
+          - HasApiKeySecret
+          - Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref ApiKeySecretArn
+          - !Ref AWS::NoValue
       Events:
         PostDataItem:
           Type: HttpApi

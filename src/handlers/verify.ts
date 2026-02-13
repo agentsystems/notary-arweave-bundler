@@ -19,8 +19,9 @@ export async function handler(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
   try {
-    if (config.apiKey) {
-      if (!checkApiKey(event.headers["x-api-key"], config.apiKey)) {
+    const apiKey = await config.getApiKey();
+    if (apiKey) {
+      if (!checkApiKey(event.headers["x-api-key"], apiKey)) {
         return response(401, { error: "Unauthorized" });
       }
     }
