@@ -198,7 +198,8 @@ Download the SAM template and deploy:
 ```bash
 curl -fLO https://raw.githubusercontent.com/agentsystems/notary-arweave-bundler/main/template.yaml
 
-KMS_KEY_ARN="arn:aws:kms:..."   # from step 1
+KMS_KEY_ARN="arn:aws:kms:..."              # from step 1
+API_KEY_ARN="arn:aws:secretsmanager:..."   # from step 2 (omit if you skipped it)
 
 sam deploy \
   --template-file template.yaml \
@@ -206,17 +207,15 @@ sam deploy \
   --parameter-overrides \
     KmsKeyArn=$KMS_KEY_ARN \
     ImageUri=${ECR_URI}:latest \
+    ApiKeySecretArn=$API_KEY_ARN \
     DryRun=true \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
+  --resolve-image-repos \
   --profile notary-arweave-bundler-deployer
 ```
 
-If you created an API key in step 2, add it to the parameter overrides:
-
-```
-    ApiKeySecretArn=arn:aws:secretsmanager:...   # from step 2
-```
+If you skipped step 2 (no API key), remove the `ApiKeySecretArn` line. The endpoint will be open to anyone with the URL.
 
 The stack deploys with `DryRun=true` — the full pipeline runs (verify, sign, bundle) but skips Arweave submission so you can test without spending AR. Check CloudWatch logs to verify everything works.
 
@@ -260,13 +259,15 @@ sam deploy \
   --parameter-overrides \
     KmsKeyArn=$KMS_KEY_ARN \
     ImageUri=${ECR_URI}:latest \
+    ApiKeySecretArn=$API_KEY_ARN \
     DryRun=false \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
+  --resolve-image-repos \
   --profile notary-arweave-bundler-deployer
 ```
 
-Include `ApiKeySecretArn=...` again if you set it in step 4.
+Remove the `ApiKeySecretArn` line if you don't have one.
 
 ### 7. Point SDK
 
