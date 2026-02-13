@@ -185,8 +185,8 @@ docker pull ghcr.io/agentsystems/notary-arweave-bundler:latest
 
 # Tag and push to ECR
 aws ecr get-login-password --profile notary-arweave-bundler-deployer | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$REGION.amazonaws.com
-docker tag ghcr.io/agentsystems/notary-arweave-bundler:latest $ECR_URI:latest
-docker push $ECR_URI:latest
+docker tag ghcr.io/agentsystems/notary-arweave-bundler:latest ${ECR_URI}:latest
+docker push ${ECR_URI}:latest
 ```
 
 ### 4. Deploy Stack
@@ -203,7 +203,7 @@ sam deploy \
   --stack-name notary-arweave-bundler \
   --parameter-overrides \
     KmsKeyArn=$KMS_KEY_ARN \
-    ImageUri=$ECR_URI:latest \
+    ImageUri=${ECR_URI}:latest \
     DryRun=true \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
@@ -257,7 +257,7 @@ sam deploy \
   --stack-name notary-arweave-bundler \
   --parameter-overrides \
     KmsKeyArn=$KMS_KEY_ARN \
-    ImageUri=$ECR_URI:latest \
+    ImageUri=${ECR_URI}:latest \
     DryRun=false \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
