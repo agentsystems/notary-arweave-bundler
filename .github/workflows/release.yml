@@ -150,12 +150,17 @@ jobs:
             echo "Security scan passed"
           '
 
+      - name: Derive AWS region from KMS key ARN
+        run: |
+          AWS_REGION=$(echo "${{ secrets.KMS_KEY_ARN }}" | cut -d: -f4)
+          echo "AWS_REGION=${AWS_REGION}" >> $GITHUB_ENV
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -169,7 +174,8 @@ jobs:
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           GHCR_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
-          ECR_REPO="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/notary-arweave-bundler"
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_REPO="${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/notary-arweave-bundler"
           ECR_IMAGE="${ECR_REPO}:${VERSION}"
 
           docker tag "${GHCR_IMAGE}" "${ECR_IMAGE}"

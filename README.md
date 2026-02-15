@@ -24,111 +24,7 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 **Create a deployer IAM user:**
 
 1. Go to **IAM > Users > Create user**. Name it `notary-arweave-bundler-deployer`.
-2. Open the user, go to **Permissions > Add permissions > Create inline policy**. Switch to the **JSON** tab, paste the policy below, and name it `deployer`:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "KMS",
-      "Effect": "Allow",
-      "Action": [
-        "kms:CreateKey",
-        "kms:CreateAlias",
-        "kms:DescribeKey",
-        "kms:GetPublicKey"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "SecretsManager",
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:CreateSecret",
-        "secretsmanager:GetSecretValue"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "ECRAuth",
-      "Effect": "Allow",
-      "Action": "ecr:GetAuthorizationToken",
-      "Resource": "*"
-    },
-    {
-      "Sid": "ECRPush",
-      "Effect": "Allow",
-      "Action": [
-        "ecr:CreateRepository",
-        "ecr:DeleteRepository",
-        "ecr:DescribeRepositories",
-        "ecr:TagResource",
-        "ecr:SetRepositoryPolicy",
-        "ecr:GetRepositoryPolicy",
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:BatchGetImage",
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:InitiateLayerUpload",
-        "ecr:UploadLayerPart",
-        "ecr:CompleteLayerUpload",
-        "ecr:PutImage"
-      ],
-      "Resource": "arn:aws:ecr:*:*:repository/notary*"
-    },
-    {
-      "Sid": "STS",
-      "Effect": "Allow",
-      "Action": "sts:GetCallerIdentity",
-      "Resource": "*"
-    },
-    {
-      "Sid": "SAMDeploy",
-      "Effect": "Allow",
-      "Action": [
-        "cloudformation:*",
-        "s3:*",
-        "lambda:*",
-        "apigateway:*",
-        "sqs:*",
-        "logs:*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "IAMRoles",
-      "Effect": "Allow",
-      "Action": [
-        "iam:CreateRole",
-        "iam:DeleteRole",
-        "iam:GetRole",
-        "iam:UpdateRole",
-        "iam:AttachRolePolicy",
-        "iam:DetachRolePolicy",
-        "iam:PutRolePolicy",
-        "iam:DeleteRolePolicy",
-        "iam:GetRolePolicy",
-        "iam:TagRole",
-        "iam:UntagRole",
-        "iam:ListRoleTags"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "IAMPassRole",
-      "Effect": "Allow",
-      "Action": "iam:PassRole",
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "iam:PassedToService": "lambda.amazonaws.com"
-        }
-      }
-    }
-  ]
-}
-```
-
+2. Open the user, go to **Permissions > Add permissions > Create inline policy**. Switch to the **JSON** tab, paste the contents of [`iam-policy.json`](iam-policy.json) from this repo, and name it `deployer`.
 3. Go to **Security credentials > Create access key**. Select **Application running outside AWS**. Note the access key ID and secret.
 
 **Create a KMS key (your Arweave wallet):**
@@ -139,8 +35,8 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 
 **Create an API key (optional):**
 
-7. Go to **Secrets Manager > Store a new secret**. Secret type: **Other type of secret**. Switch to **Plaintext** and paste a random string (e.g. generate one at random.org). Click through to create.
-8. Note the secret ARN. Skip this step to leave the endpoint open (anyone with the URL can submit DataItems and spend your AR).
+7. Go to **Secrets Manager > Store a new secret**. Secret type: **Other type of secret**. Switch to **Plaintext** and paste a random string. Click through to create.
+8. Note the secret ARN. Skip this step to leave the endpoint open.
 
 ### Step 2: Fork & Configure (~2 min)
 
@@ -152,10 +48,8 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 |---|---|
 | `AWS_ACCESS_KEY_ID` | From step 1.3 |
 | `AWS_SECRET_ACCESS_KEY` | From step 1.3 |
-| `AWS_REGION` | Your AWS region (e.g. `us-east-1`) |
-| `AWS_ACCOUNT_ID` | Your 12-digit AWS account ID |
 | `KMS_KEY_ARN` | From step 1.6 |
-| `API_KEY_SECRET_ARN` | From step 1.8 (optional — leave out for open access) |
+| `API_KEY_SECRET_ARN` | From step 1.8 (optional) |
 
 ### Step 3: Deploy
 
@@ -166,9 +60,7 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 
 ### Step 4: Fund & Go Live
 
-Send AR to the wallet address shown in the workflow summary. You can acquire AR from an exchange and transfer it, or fund from an existing wallet. The bundler needs AR to pay for L1 transaction storage. See [arweave.net](https://arweave.net) for current pricing.
-
-Check your balance at `https://arweave.net/wallet/<ADDRESS>/balance`.
+Send AR to the wallet address shown in the workflow summary.
 
 ### Step 5: Configure SDK
 
@@ -178,33 +70,7 @@ Configure the agentsystems-notary SDK (>= 0.2.0) to use your bundler:
 from agentsystems_notary import NotaryCore
 
 notary = NotaryCore(
-    bundler_url="https://XXXXXXXXXX.execute-api.us-east-1.amazonaws.com",  # from workflow summary
-    bundler_api_key="...",  # the value you stored in Secrets Manager; omit if no API key
+    bundler_url="https://XXXXXXXXXX.execute-api.us-east-1.amazonaws.com",
+    bundler_api_key="...",  # omit if no API key
 )
 ```
-
-## Building from Source
-
-If you prefer to build the image yourself instead of pulling from GHCR:
-
-```bash
-git clone https://github.com/agentsystems/notary-arweave-bundler.git
-cd notary-arweave-bundler
-npm ci
-npm run build
-docker build -t notary-arweave-bundler .
-```
-
-Then push to ECR and deploy by triggering the Release workflow as shown in Step 3, or push to ECR manually and run `sam deploy` with your own `ImageUri`.
-
-## Environment Variables
-
-These are set automatically by the SAM template. Listed here for reference.
-
-| Variable | Lambda | Description |
-|---|---|---|
-| `SQS_QUEUE_URL` | verify | SQS queue URL |
-| `API_KEY_SECRET_ARN` | verify | Optional Secrets Manager ARN for API key (default: empty/open) |
-| `KMS_KEY_ARN` | bundle | KMS key ARN for signing L1 transactions |
-| `ARWEAVE_GATEWAY_URL` | bundle | Arweave gateway (default: `https://arweave.net`) |
-| `DRY_RUN` | bundle | Skip Arweave submission when `true` (default: `false`) |
