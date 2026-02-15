@@ -35,8 +35,7 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 
 **Create an API key (optional):**
 
-7. Go to **Secrets Manager > Store a new secret**. Secret type: **Other type of secret**. Switch to **Plaintext** and paste a random string. Click through to create.
-8. Note the secret ARN. Skip this step to leave the endpoint open.
+7. Go to **Secrets Manager > Store a new secret** with a random API key string. Note the ARN. Skip this step to leave the endpoint open.
 
 ### Step 2: Fork & Configure (~2 min)
 
@@ -49,7 +48,7 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 | `AWS_ACCESS_KEY_ID` | From step 1.3 |
 | `AWS_SECRET_ACCESS_KEY` | From step 1.3 |
 | `KMS_KEY_ARN` | From step 1.6 |
-| `API_KEY_SECRET_ARN` | From step 1.8 (optional) |
+| `API_KEY_SECRET_ARN` | From step 1.7 (optional) |
 
 ### Step 3: Deploy
 
