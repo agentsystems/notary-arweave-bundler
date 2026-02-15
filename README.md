@@ -14,19 +14,17 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 
 ## Prerequisites
 
-- AWS CLI configured with credentials (see Step 0 below)
-- [SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) installed
-- Docker installed
-- Node.js installed (for wallet address derivation in step 6)
+- AWS account
+- GitHub account
 
 ## Deploy
 
-### 0. Create a Deployer IAM User
+### Step 1: AWS Console Setup (~10 min)
 
-Create a dedicated IAM user for deploying this stack. This avoids using a root or admin account.
+**Create a deployer IAM user:**
 
-1. In the AWS Console, go to **IAM > Users > Create user**. Name it `notary-arweave-bundler-deployer`.
-2. Once created, open the user and go to **Permissions > Add permissions > Create inline policy**. Switch to the **JSON** tab, paste the policy below, and name it `deployer`:
+1. Go to **IAM > Users > Create user**. Name it `notary-arweave-bundler-deployer`.
+2. Open the user, go to **Permissions > Add permissions > Create inline policy**. Switch to the **JSON** tab, paste the policy below, and name it `deployer`:
 
 ```json
 {
@@ -131,159 +129,48 @@ Create a dedicated IAM user for deploying this stack. This avoids using a root o
 }
 ```
 
-3. Go to **Security credentials > Create access key**. Select **Application running outside AWS**. Configure a named CLI profile:
+3. Go to **Security credentials > Create access key**. Select **Application running outside AWS**. Note the access key ID and secret.
 
-```bash
-aws configure --profile notary-arweave-bundler-deployer
-```
+**Create a KMS key (your Arweave wallet):**
 
-All commands below use `--profile notary-arweave-bundler-deployer` to target this user.
+4. Go to **KMS > Customer managed keys > Create key**.
+5. Key type: **Asymmetric**. Key spec: **RSA_4096**. Key usage: **Sign and verify**. Click through to create.
+6. Note the key ARN (e.g. `arn:aws:kms:us-east-1:123456789012:key/abcd-1234-...`).
 
-### 1. Create KMS Key
+**Create an API key (optional):**
 
-This RSA-4096 key is your Arweave wallet. The bundler uses KMS to sign Arweave transactions without the private key ever being exposed to application code.
+7. Go to **Secrets Manager > Store a new secret**. Secret type: **Other type of secret**. Switch to **Plaintext** and paste a random string (e.g. generate one at random.org). Click through to create.
+8. Note the secret ARN. Skip this step to leave the endpoint open (anyone with the URL can submit DataItems and spend your AR).
 
-```bash
-aws kms create-key \
-  --key-spec RSA_4096 \
-  --key-usage SIGN_VERIFY \
-  --description "Arweave bundler signing key" \
-  --profile notary-arweave-bundler-deployer
-```
+### Step 2: Fork & Configure (~2 min)
 
-Note the `KeyId` from the output, then create an alias so the key is easy to find in the console:
+1. Fork this repo on GitHub.
+2. In your fork, go to **Settings > Secrets and variables > Actions**.
+3. Add these repository secrets:
 
-```bash
-aws kms create-alias \
-  --alias-name alias/notary-arweave-bundler \
-  --target-key-id <KeyId> \
-  --profile notary-arweave-bundler-deployer
-```
+| Secret | Value |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | From step 1.3 |
+| `AWS_SECRET_ACCESS_KEY` | From step 1.3 |
+| `AWS_REGION` | Your AWS region (e.g. `us-east-1`) |
+| `AWS_ACCOUNT_ID` | Your 12-digit AWS account ID |
+| `KMS_KEY_ARN` | From step 1.6 |
+| `API_KEY_SECRET_ARN` | From step 1.8 (optional — leave out for open access) |
 
-Note the key ARN (e.g. `arn:aws:kms:us-east-1:123456789012:key/abcd-1234-...`). You'll need it in step 4.
+### Step 3: Deploy
 
-### 2. Create API Key (Optional)
+1. Go to **Actions > Release > Run workflow**.
+2. Enter a version (e.g. `0.1.0`) and click **Run workflow**.
+3. The workflow builds the image, pushes to GHCR + ECR, runs `sam deploy` to create the full stack, and creates a GitHub release.
+4. When complete, check the **workflow summary** for your API Gateway endpoint URL and wallet address.
 
-To protect your endpoint, store a randomly generated API key in Secrets Manager:
+### Step 4: Fund & Go Live
 
-```bash
-aws secretsmanager create-secret \
-  --name notary-arweave-bundler/api-key \
-  --secret-string "$(openssl rand -base64 32)" \
-  --profile notary-arweave-bundler-deployer
-```
+Send AR to the wallet address shown in the workflow summary. You can acquire AR from an exchange and transfer it, or fund from an existing wallet. The bundler needs AR to pay for L1 transaction storage. See [arweave.net](https://arweave.net) for current pricing.
 
-Note the `ARN` field from the output. You'll need it in step 4. Skip this step to leave the endpoint open (anyone with the URL can submit DataItems and spend your AR).
+Check your balance at `https://arweave.net/wallet/<ADDRESS>/balance`.
 
-### 3. Pull Image and Push to ECR
-
-AWS Lambda requires container images in ECR. Pull the pre-built image from GHCR and push to your account:
-
-```bash
-REGION=$(aws configure get region --profile notary-arweave-bundler-deployer)
-ACCOUNT=$(aws sts get-caller-identity --query Account --output text --profile notary-arweave-bundler-deployer)
-ECR_URI=$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/notary-arweave-bundler
-
-# Create ECR repository (first time only)
-aws ecr create-repository --repository-name notary-arweave-bundler --profile notary-arweave-bundler-deployer
-
-# Pull from GHCR (amd64 — required for Lambda's default architecture)
-docker pull --platform linux/amd64 ghcr.io/agentsystems/notary-arweave-bundler:latest
-
-# Tag and push to ECR
-aws ecr get-login-password --profile notary-arweave-bundler-deployer | docker login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$REGION.amazonaws.com
-docker tag ghcr.io/agentsystems/notary-arweave-bundler:latest ${ECR_URI}:latest
-docker push ${ECR_URI}:latest
-```
-
-### 4. Deploy Stack
-
-Download the SAM template and deploy:
-
-```bash
-curl -fLO https://raw.githubusercontent.com/agentsystems/notary-arweave-bundler/main/template.yaml
-
-KMS_KEY_ARN="arn:aws:kms:..."              # from step 1
-API_KEY_ARN="arn:aws:secretsmanager:..."   # from step 2 (omit if you skipped it)
-
-sam deploy \
-  --template-file template.yaml \
-  --stack-name notary-arweave-bundler \
-  --parameter-overrides \
-    KmsKeyArn=$KMS_KEY_ARN \
-    ImageUri=${ECR_URI}:latest \
-    ApiKeySecretArn=$API_KEY_ARN \
-    DryRun=true \
-  --capabilities CAPABILITY_IAM \
-  --resolve-s3 \
-  --resolve-image-repos \
-  --profile notary-arweave-bundler-deployer
-```
-
-If you skipped step 2 (no API key), remove the `ApiKeySecretArn` line. The endpoint will be open to anyone with the URL.
-
-The stack deploys with `DryRun=true` — the full pipeline runs (verify, sign, bundle) but skips Arweave submission so you can test without spending AR. Check CloudWatch logs to verify everything works.
-
-The API Gateway endpoint URL will be printed in the stack outputs.
-
-### 5. Fund Your Wallet
-
-Derive your Arweave wallet address from the KMS key:
-
-```bash
-aws kms get-public-key --key-id "$KMS_KEY_ARN" --output text --query PublicKey --profile notary-arweave-bundler-deployer | \
-  node -e "
-    const crypto = require('crypto');
-    let d = '';
-    process.stdin.on('data', c => d += c);
-    process.stdin.on('end', () => {
-      const pub = crypto.createPublicKey({
-        key: Buffer.from(d.trim(), 'base64'),
-        format: 'der', type: 'spki',
-      });
-      const n = pub.export({ format: 'jwk' }).n;
-      const addr = crypto.createHash('sha256')
-        .update(Buffer.from(n, 'base64url')).digest().toString('base64url');
-      console.log(addr);
-    });
-  "
-```
-
-Send AR to this address. You can acquire AR from an exchange and transfer it, or fund it from an existing wallet. The bundler needs AR to pay for L1 transaction storage. See [arweave.net](https://arweave.net) for current pricing.
-
-You can check your balance at `https://arweave.net/wallet/<ADDRESS>/balance`.
-
-### 6. Go Live
-
-Once your wallet is funded, redeploy with the same parameters as step 4 but set `DryRun=false` (or omit it — the default is `false`):
-
-```bash
-sam deploy \
-  --template-file template.yaml \
-  --stack-name notary-arweave-bundler \
-  --parameter-overrides \
-    KmsKeyArn=$KMS_KEY_ARN \
-    ImageUri=${ECR_URI}:latest \
-    ApiKeySecretArn=$API_KEY_ARN \
-    DryRun=false \
-  --capabilities CAPABILITY_IAM \
-  --resolve-s3 \
-  --resolve-image-repos \
-  --profile notary-arweave-bundler-deployer
-```
-
-Remove the `ApiKeySecretArn` line if you don't have one.
-
-### 7. Point SDK
-
-Retrieve your API key (if you created one in step 2):
-
-```bash
-aws secretsmanager get-secret-value \
-  --secret-id notary-arweave-bundler/api-key \
-  --query SecretString --output text \
-  --profile notary-arweave-bundler-deployer
-```
+### Step 5: Configure SDK
 
 Configure the agentsystems-notary SDK (>= 0.2.0) to use your bundler:
 
@@ -291,8 +178,8 @@ Configure the agentsystems-notary SDK (>= 0.2.0) to use your bundler:
 from agentsystems_notary import NotaryCore
 
 notary = NotaryCore(
-    bundler_url="https://XXXXXXXXXX.execute-api.us-east-1.amazonaws.com",
-    bundler_api_key="...",  # the value from above; omit if no API key
+    bundler_url="https://XXXXXXXXXX.execute-api.us-east-1.amazonaws.com",  # from workflow summary
+    bundler_api_key="...",  # the value you stored in Secrets Manager; omit if no API key
 )
 ```
 
@@ -308,7 +195,7 @@ npm run build
 docker build -t notary-arweave-bundler .
 ```
 
-Then tag and push to your ECR as shown in step 3.
+Then push to ECR and deploy by triggering the Release workflow as shown in Step 3, or push to ECR manually and run `sam deploy` with your own `ImageUri`.
 
 ## Environment Variables
 

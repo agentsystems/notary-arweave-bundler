@@ -93,14 +93,14 @@ Resources:
           Type: SQS
           Properties:
             Queue: !GetAtt BundleQueue.Arn
-            BatchSize: 1000
-            MaximumBatchingWindowInSeconds: 60
+            BatchSize: 2000
+            MaximumBatchingWindowInSeconds: 180
 
   # --- SQS Queues ---
   BundleQueue:
     Type: AWS::SQS::Queue
     Properties:
-      VisibilityTimeout: 180
+      VisibilityTimeout: 720
       MessageRetentionPeriod: 345600 # 4 days
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt BundleDLQ.Arn

@@ -1,6 +1,6 @@
 name: Release
 
-# Build, push to GHCR + ECR, update Lambda, create GitHub release.
+# Build, push to GHCR + ECR, sam deploy, create GitHub release.
 # Manual dispatch only — enter a semver version and go.
 
 on:
@@ -160,6 +160,11 @@ jobs:
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Create ECR repository
+        run: |
+          aws ecr describe-repositories --repository-names notary-arweave-bundler 2>/dev/null \
+            || aws ecr create-repository --repository-name notary-arweave-bundler
+
       - name: Push to ECR
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
@@ -170,29 +175,59 @@ jobs:
           docker tag "${GHCR_IMAGE}" "${ECR_IMAGE}"
           docker push "${ECR_IMAGE}"
 
-          echo "ecr_image=${ECR_IMAGE}" >> $GITHUB_ENV
+          echo "ECR_IMAGE=${ECR_IMAGE}" >> $GITHUB_ENV
 
-      - name: Update Lambda functions
+      - name: Install SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Deploy stack
         run: |
-          STACK="notary-arweave-bundler"
+          sam deploy \
+            --template-file template.yaml \
+            --stack-name notary-arweave-bundler \
+            --parameter-overrides \
+              KmsKeyArn=${{ secrets.KMS_KEY_ARN }} \
+              ImageUri=${ECR_IMAGE} \
+              ApiKeySecretArn=${{ secrets.API_KEY_SECRET_ARN }} \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
 
-          VERIFY=$(aws cloudformation describe-stack-resource \
-            --stack-name "${STACK}" --logical-resource-id VerifyFunction \
-            --query 'StackResourceDetail.PhysicalResourceId' --output text)
+      - name: Print stack outputs
+        run: |
+          OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name notary-arweave-bundler \
+            --query 'Stacks[0].Outputs' --output json)
 
-          BUNDLE=$(aws cloudformation describe-stack-resource \
-            --stack-name "${STACK}" --logical-resource-id BundleFunction \
-            --query 'StackResourceDetail.PhysicalResourceId' --output text)
+          API_URL=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue')
 
-          echo "Updating VerifyFunction (${VERIFY})..."
-          aws lambda update-function-code \
-            --function-name "${VERIFY}" --image-uri "${ecr_image}" --publish
+          WALLET_ADDRESS=$(aws kms get-public-key \
+            --key-id "${{ secrets.KMS_KEY_ARN }}" \
+            --output text --query PublicKey | \
+            node -e "
+              const crypto = require('crypto');
+              let d = '';
+              process.stdin.on('data', c => d += c);
+              process.stdin.on('end', () => {
+                const pub = crypto.createPublicKey({
+                  key: Buffer.from(d.trim(), 'base64'),
+                  format: 'der', type: 'spki',
+                });
+                const n = pub.export({ format: 'jwk' }).n;
+                const addr = crypto.createHash('sha256')
+                  .update(Buffer.from(n, 'base64url')).digest().toString('base64url');
+                console.log(addr);
+              });
+            ")
 
-          echo "Updating BundleFunction (${BUNDLE})..."
-          aws lambda update-function-code \
-            --function-name "${BUNDLE}" --image-uri "${ecr_image}" --publish
-
-          echo "Both Lambda functions updated"
+          echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**API Endpoint:** \`${API_URL}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Wallet Address:** \`${WALLET_ADDRESS}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Fund this wallet with AR, then point your SDK at the endpoint." >> $GITHUB_STEP_SUMMARY
 
   create-release:
     needs: [validate, build-and-deploy]
