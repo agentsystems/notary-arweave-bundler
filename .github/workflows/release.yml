@@ -208,7 +208,7 @@ jobs:
 
           API_URL=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue')
 
-          WALLET_ADDRESS=$(aws kms get-public-key \
+          ARWEAVE_ADDRESS=$(aws kms get-public-key \
             --key-id "${{ secrets.KMS_KEY_ARN }}" \
             --output text --query PublicKey | \
             node -e "
@@ -231,9 +231,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**API Endpoint:** \`${API_URL}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Wallet Address:** \`${WALLET_ADDRESS}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Arweave Address:** \`${ARWEAVE_ADDRESS}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Fund this wallet with AR, then point your SDK at the endpoint." >> $GITHUB_STEP_SUMMARY
+          echo "Fund this address with AR, then point your SDK at the endpoint." >> $GITHUB_STEP_SUMMARY
 
   create-release:
     needs: [validate, build-and-deploy]

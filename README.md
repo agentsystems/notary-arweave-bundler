@@ -27,7 +27,7 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 2. Open the user, go to **Permissions > Add permissions > Create inline policy**. Switch to the **JSON** tab, paste the contents of [`iam-policy.json`](iam-policy.json) from this repo, and name it `deployer`.
 3. Go to **Security credentials > Create access key**. Select **Application running outside AWS**. Note the access key ID and secret.
 
-**Create a KMS key (your Arweave wallet):**
+**Create a KMS signing key:**
 
 4. Go to **KMS > Customer managed keys > Create key**.
 5. Key type: **Asymmetric**. Key spec: **RSA_4096**. Key usage: **Sign and verify**. Click through to create.
@@ -55,11 +55,11 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 1. Go to **Actions > Release > Run workflow**.
 2. Enter a version (e.g. `0.1.0`) and click **Run workflow**.
 3. The workflow builds the image, pushes to GHCR + ECR, runs `sam deploy` to create the full stack, and creates a GitHub release.
-4. When complete, check the **workflow summary** for your API Gateway endpoint URL and wallet address.
+4. When complete, check the **workflow summary** for your API Gateway endpoint URL and Arweave address.
 
 ### Step 4: Fund & Go Live
 
-Send AR to the wallet address shown in the workflow summary.
+Send AR to the Arweave address shown in the workflow summary.
 
 ### Step 5: Configure SDK
 
