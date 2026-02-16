@@ -5,19 +5,8 @@
       "Sid": "KMS",
       "Effect": "Allow",
       "Action": [
-        "kms:CreateKey",
-        "kms:CreateAlias",
         "kms:DescribeKey",
         "kms:GetPublicKey"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "SecretsManager",
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:CreateSecret",
-        "secretsmanager:GetSecretValue"
       ],
       "Resource": "*"
     },
@@ -51,6 +40,21 @@
       "Sid": "STS",
       "Effect": "Allow",
       "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DynamoDB",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:DescribeTimeToLive",
+        "dynamodb:UpdateTimeToLive",
+        "dynamodb:TagResource",
+        "dynamodb:UntagResource",
+        "dynamodb:ListTagsOfResource"
+      ],
       "Resource": "*"
     },
     {

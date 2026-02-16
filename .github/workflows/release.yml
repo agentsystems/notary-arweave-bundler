@@ -195,6 +195,7 @@ jobs:
               KmsKeyArn=${{ secrets.KMS_KEY_ARN }} \
               ImageUri=${ECR_IMAGE} \
               ApiKeySecretArn=${{ secrets.API_KEY_SECRET_ARN }} \
+              RateLimitPerHour=${{ secrets.RATE_LIMIT_PER_HOUR }} \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --resolve-image-repos \
