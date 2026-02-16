@@ -17,25 +17,25 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 
 ## Deploy
 
-### Step 1: AWS Console Setup (~10 min)
+### Step 1: AWS Console Setup
 
 **Create a deployer IAM user:**
 
-1. Go to **IAM > Users > Create user**. Name it `notary-arweave-bundler-deployer`.
+1. Go to **IAM > Users > Create user**. Name it `notary-arweave-bundler-deployer`. Click through to create the user.
 2. Open the user, go to **Permissions > Add permissions > Create inline policy**. Switch to the **JSON** tab, paste the contents of [`iam-policy.json`](iam-policy.json) from this repo, and name it `deployer`.
 3. Go to **Security credentials > Create access key**. Select **Application running outside AWS**. Note the access key ID and secret.
 
 **Create a KMS signing key:**
 
 4. Go to **KMS > Customer managed keys > Create key**.
-5. Key type: **Asymmetric**. Key spec: **RSA_4096**. Key usage: **Sign and verify**. Click through to create.
+5. Key usage: **Sign and verify**. Key type: **Asymmetric**. Key spec: **RSA_4096**. Click through to create.
 6. Note the key ARN (e.g. `arn:aws:kms:us-east-1:123456789012:key/abcd-1234-...`).
 
 **Create an API key (optional):**
 
-7. Go to **Secrets Manager > Store a new secret** with a random API key string. Note the ARN. Skip this step to leave the endpoint open.
+7. Go to **Secrets Manager > Store a new secret**. Select **Other type of secret** and enter a random API key string. Note the ARN. Skip this step to leave the endpoint open.
 
-### Step 2: Fork & Configure (~2 min)
+### Step 2: Fork & Configure
 
 1. Fork this repo on GitHub.
 2. In your fork, go to **Settings > Secrets and variables > Actions**.
@@ -47,13 +47,15 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 | `AWS_SECRET_ACCESS_KEY` | From step 1.3 |
 | `KMS_KEY_ARN` | From step 1.6 |
 | `API_KEY_SECRET_ARN` | From step 1.7 (optional) |
+| `RATE_LIMIT_PER_HOUR` | Max items/hour (optional) |
 
 ### Step 3: Deploy
 
 1. Go to **Actions > Release > Run workflow**.
 2. Enter a version (e.g. `0.1.0`) and click **Run workflow**.
 3. The workflow builds the image, pushes to GHCR + ECR, runs `sam deploy` to create the full stack, and creates a GitHub release.
-4. When complete, check the **workflow summary** for your API Gateway endpoint URL and Arweave address.
+
+> **Important:** When the workflow completes, open the run and check the **workflow summary** at the bottom of the page for your **API Gateway endpoint URL** and **Arweave address**.
 
 ### Step 4: Fund
 

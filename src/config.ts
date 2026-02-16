@@ -49,4 +49,11 @@ export const config = {
   get dryRun(): boolean {
     return process.env.DRY_RUN === "true";
   },
+  get rateLimitPerHour(): number | undefined {
+    const v = process.env.RATE_LIMIT_PER_HOUR;
+    return v ? parseInt(v, 10) : undefined;
+  },
+  get rateLimitTable(): string | undefined {
+    return process.env.RATE_LIMIT_TABLE || undefined;
+  },
 };

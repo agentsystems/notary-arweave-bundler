@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { parseDataItem } from "../lib/data-item";
 import { validateDataItem } from "../lib/validate";
 import { config } from "../config";
+import { checkRateLimit } from "../lib/rate-limit";
 
 const sqsClient = new SQSClient({});
 
@@ -24,6 +25,11 @@ export async function handler(
       if (!checkApiKey(event.headers["x-api-key"], apiKey)) {
         return response(401, { error: "Unauthorized" });
       }
+    }
+
+    const rateCheck = await checkRateLimit();
+    if (!rateCheck.allowed) {
+      return response(429, { error: "Rate limit exceeded" });
     }
 
     const body = event.body;
