@@ -28,12 +28,12 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 **Create a KMS signing key:**
 
 4. Go to **KMS > Customer managed keys > Create key**.
-5. Key usage: **Sign and verify**. Key type: **Asymmetric**. Key spec: **RSA_4096**. Click through to create.
+5. Key type: **Asymmetric**. Key usage: **Sign and verify**. Key spec: **RSA_4096**. Click through to create.
 6. Note the key ARN (e.g. `arn:aws:kms:us-east-1:123456789012:key/abcd-1234-...`).
 
 **Create an API key (optional):**
 
-7. Go to **Secrets Manager > Store a new secret**. Select **Other type of secret** and enter a random API key string. Note the ARN. Skip this step to leave the endpoint open.
+7. To require clients to authenticate with an `x-api-key` header, go to **Secrets Manager > Store a new secret**. Select **Other type of secret** and enter a random API key string. Note the ARN. Skip this step to leave the endpoint open.
 
 ### Step 2: Fork & Configure
 
@@ -46,16 +46,15 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 | `AWS_ACCESS_KEY_ID` | From step 1.3 |
 | `AWS_SECRET_ACCESS_KEY` | From step 1.3 |
 | `KMS_KEY_ARN` | From step 1.6 |
-| `API_KEY_SECRET_ARN` | From step 1.7 (optional) |
-| `RATE_LIMIT_PER_HOUR` | Max items/hour (optional) |
+| `API_KEY_SECRET_ARN` | From step 1.7 (optional — requires clients to pass an `x-api-key` header; without it the endpoint is open to anyone) |
+| `RATE_LIMIT_PER_HOUR` | Max items per hour (optional — caps total submissions across all users; useful for public demo instances to limit abuse) |
 
 ### Step 3: Deploy
 
 1. Go to **Actions > Release > Run workflow**.
 2. Enter a version (e.g. `0.1.0`) and click **Run workflow**.
 3. The workflow builds the image, pushes to GHCR + ECR, runs `sam deploy` to create the full stack, and creates a GitHub release.
-
-> **Important:** When the workflow completes, open the run and check the **workflow summary** at the bottom of the page for your **API Gateway endpoint URL** and **Arweave address**.
+4. When the release completes, open the workflow run. Your **API Gateway endpoint URL** and **Arweave address** are in the **Summary** tab under **Deploy Summary**.
 
 ### Step 4: Fund
 
