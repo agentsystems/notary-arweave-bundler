@@ -152,7 +152,7 @@ jobs:
 
       - name: Derive AWS region from KMS key ARN
         run: |
-          AWS_REGION=$(echo "${{ secrets.KMS_KEY_ARN }}" | cut -d: -f4)
+          AWS_REGION=$(echo "${{ vars.KMS_KEY_ARN }}" | cut -d: -f4)
           echo "AWS_REGION=${AWS_REGION}" >> $GITHUB_ENV
 
       - name: Configure AWS credentials
@@ -188,12 +188,12 @@ jobs:
 
       - name: Build parameter overrides
         run: |
-          OVERRIDES="KmsKeyArn=${{ secrets.KMS_KEY_ARN }} ImageUri=${ECR_IMAGE}"
-          if [ -n "${{ secrets.API_KEY_SECRET_ARN }}" ]; then
-            OVERRIDES="$OVERRIDES ApiKeySecretArn=${{ secrets.API_KEY_SECRET_ARN }}"
+          OVERRIDES="KmsKeyArn=${{ vars.KMS_KEY_ARN }} ImageUri=${ECR_IMAGE}"
+          if [ -n "${{ vars.API_KEY_SECRET_ARN }}" ]; then
+            OVERRIDES="$OVERRIDES ApiKeySecretArn=${{ vars.API_KEY_SECRET_ARN }}"
           fi
-          if [ -n "${{ secrets.RATE_LIMIT_PER_HOUR }}" ]; then
-            OVERRIDES="$OVERRIDES RateLimitPerHour=${{ secrets.RATE_LIMIT_PER_HOUR }}"
+          if [ -n "${{ vars.RATE_LIMIT_PER_HOUR }}" ]; then
+            OVERRIDES="$OVERRIDES RateLimitPerHour=${{ vars.RATE_LIMIT_PER_HOUR }}"
           fi
           echo "PARAM_OVERRIDES=$OVERRIDES" >> $GITHUB_ENV
 
@@ -218,7 +218,7 @@ jobs:
           API_URL=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue')
 
           ARWEAVE_ADDRESS=$(aws kms get-public-key \
-            --key-id "${{ secrets.KMS_KEY_ARN }}" \
+            --key-id "${{ vars.KMS_KEY_ARN }}" \
             --output text --query PublicKey | \
             node -e "
               const crypto = require('crypto');

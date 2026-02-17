@@ -39,12 +39,17 @@ Client (SDK) → API Gateway → Lambda (verify) → SQS → Lambda (bundle + su
 
 1. Fork this repo on GitHub.
 2. In your fork, go to **Settings > Secrets and variables > Actions**.
-3. Add these repository secrets:
+3. Under the **Secrets** tab, add these repository secrets:
 
 | Secret | Value |
 |---|---|
 | `AWS_ACCESS_KEY_ID` | From step 1.3 |
 | `AWS_SECRET_ACCESS_KEY` | From step 1.3 |
+
+4. Under the **Variables** tab, add these repository variables:
+
+| Variable | Value |
+|---|---|
 | `KMS_KEY_ARN` | From step 1.6 |
 | `API_KEY_SECRET_ARN` | From step 1.7 (optional — requires clients to pass an `x-api-key` header; without it the endpoint is open to anyone) |
 | `RATE_LIMIT_PER_HOUR` | Max items per hour (optional — caps total submissions across all users; useful for public demo instances to limit abuse) |
