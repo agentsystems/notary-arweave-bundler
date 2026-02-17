@@ -186,23 +186,16 @@ jobs:
       - name: Install SAM CLI
         uses: aws-actions/setup-sam@v2
 
-      - name: Build parameter overrides
-        run: |
-          OVERRIDES="KmsKeyArn=${{ vars.KMS_KEY_ARN }} ImageUri=${ECR_IMAGE}"
-          if [ -n "${{ vars.API_KEY_SECRET_ARN }}" ]; then
-            OVERRIDES="$OVERRIDES ApiKeySecretArn=${{ vars.API_KEY_SECRET_ARN }}"
-          fi
-          if [ -n "${{ vars.RATE_LIMIT_PER_HOUR }}" ]; then
-            OVERRIDES="$OVERRIDES RateLimitPerHour=${{ vars.RATE_LIMIT_PER_HOUR }}"
-          fi
-          echo "PARAM_OVERRIDES=$OVERRIDES" >> $GITHUB_ENV
-
       - name: Deploy stack
         run: |
           sam deploy \
             --template-file template.yaml \
             --stack-name notary-arweave-bundler \
-            --parameter-overrides ${PARAM_OVERRIDES} \
+            --parameter-overrides \
+              KmsKeyArn=${{ vars.KMS_KEY_ARN }} \
+              ImageUri=${ECR_IMAGE} \
+              ApiKeySecretArn=${{ vars.API_KEY_SECRET_ARN || 'NONE' }} \
+              RateLimitPerHour=${{ vars.RATE_LIMIT_PER_HOUR || 'NONE' }} \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --resolve-image-repos \

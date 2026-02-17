@@ -24,8 +24,12 @@ Parameters:
     Default: ""
 
 Conditions:
-  HasApiKeySecret: !Not [!Equals [!Ref ApiKeySecretArn, ""]]
-  HasRateLimit: !Not [!Equals [!Ref RateLimitPerHour, ""]]
+  HasApiKeySecret: !And
+    - !Not [!Equals [!Ref ApiKeySecretArn, ""]]
+    - !Not [!Equals [!Ref ApiKeySecretArn, "NONE"]]
+  HasRateLimit: !And
+    - !Not [!Equals [!Ref RateLimitPerHour, ""]]
+    - !Not [!Equals [!Ref RateLimitPerHour, "NONE"]]
 
 Globals:
   Function:

@@ -21,7 +21,7 @@ async function loadApiKey(): Promise<string | undefined> {
   if (apiKeyLoaded) return cachedApiKey;
 
   const secretArn = process.env.API_KEY_SECRET_ARN;
-  if (!secretArn) {
+  if (!secretArn || secretArn === "NONE") {
     apiKeyLoaded = true;
     return undefined;
   }
@@ -51,7 +51,7 @@ export const config = {
   },
   get rateLimitPerHour(): number | undefined {
     const v = process.env.RATE_LIMIT_PER_HOUR;
-    return v ? parseInt(v, 10) : undefined;
+    return v && v !== "NONE" ? parseInt(v, 10) : undefined;
   },
   get rateLimitTable(): string | undefined {
     return process.env.RATE_LIMIT_TABLE || undefined;
