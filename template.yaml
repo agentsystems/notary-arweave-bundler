@@ -82,6 +82,24 @@ Resources:
             Path: /
             Method: POST
 
+  # --- Lambda: Health check ---
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ImageUri: !Ref ImageUri
+      ImageConfig:
+        Command: ["handlers/health.handler"]
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        GetHealth:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /health
+            Method: GET
+
   # --- Lambda 2: Bundle + submit to Arweave ---
   BundleFunction:
     Type: AWS::Serverless::Function
