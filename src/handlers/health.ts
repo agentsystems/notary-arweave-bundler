@@ -6,6 +6,10 @@ export async function handler(
   return {
     statusCode: 200,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "ok" }),
+    body: JSON.stringify({
+      status: "ok",
+      version: process.env.BUILD_VERSION || "unknown",
+      commit: process.env.BUILD_COMMIT || "unknown",
+    }),
   };
 }
