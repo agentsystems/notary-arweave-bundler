@@ -51,6 +51,9 @@ Resources:
       ImageUri: !Ref ImageUri
       ImageConfig:
         Command: ["handlers/verify.handler"]
+      AutoPublishAlias: live
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 1
       MemorySize: 256
       Timeout: 30
       Environment:
@@ -94,6 +97,9 @@ Resources:
       ImageUri: !Ref ImageUri
       ImageConfig:
         Command: ["handlers/health.handler"]
+      AutoPublishAlias: live
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 1
       MemorySize: 128
       Timeout: 5
       Events:

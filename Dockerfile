@@ -108,6 +108,11 @@ COPY LICENSE ${LAMBDA_TASK_ROOT}/LICENSE
 # Copy comprehensive license attribution artifacts
 COPY --from=builder /build/licenses ${LAMBDA_TASK_ROOT}/licenses
 
+# Bake build metadata into runtime environment
+ENV BUILD_VERSION=${VERSION}
+ENV BUILD_COMMIT=${GIT_COMMIT}
+ENV BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+
 # OCI labels
 LABEL org.opencontainers.image.title="Notary Arweave Bundler" \
       org.opencontainers.image.description="Self-hosted Arweave bundler for agentsystems-notary" \
